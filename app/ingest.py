@@ -19,6 +19,7 @@ niż cicho zaimportować dane źle zmapowane i mieć błędne alerty.
 import io
 import ipaddress
 import json
+import os
 import re
 import warnings
 
@@ -295,7 +296,12 @@ def load_dataframe(file_storage_or_path, filename_hint=""):
     if hasattr(file_storage_or_path, "read"):
         raw = file_storage_or_path.read()
     else:
-        with open(file_storage_or_path, "rb") as fh:
+        safe_root = os.path.realpath(os.path.join(os.path.dirname(__file__), "imports"))
+        requested = os.fspath(file_storage_or_path)
+        full_path = os.path.realpath(os.path.join(safe_root, requested))
+        if os.path.commonpath([safe_root, full_path]) != safe_root:
+            raise ValueError("Niedozwolona ścieżka pliku.")
+        with open(full_path, "rb") as fh:
             raw = fh.read()
     text = _decode(raw)
 
