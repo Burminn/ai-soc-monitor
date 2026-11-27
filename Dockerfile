@@ -2,9 +2,17 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SOC_DB_PATH=/data/soc.db
 
+# Łatki systemowe (np. libzstd1) bez zbędnych pakietów.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# pip i setuptools nie są potrzebne w czasie działania; usunięcie ich zmniejsza powierzchnię ataku
+# (m.in. wbudowane kopie urllib3 i msgpack w pip).
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y pip setuptools wheel
 
 COPY app/ .
 
