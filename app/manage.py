@@ -64,17 +64,17 @@ def main(argv=None):
         elif args.cmd == "create-tenant":
             db.init_db()
             tenant_id = db.create_tenant(args.name, args.sector)
-            api_key = db.rotate_api_key(tenant_id)
+            db.rotate_api_key(tenant_id)
             print(f"Utworzono tenanta id={tenant_id} name={args.name!r}")
-            print(f"Klucz API wygenerowany (zamaskowany): {_mask_secret(api_key)}")
+            print(f"Klucz API wygenerowany dla tenanta id={tenant_id}.")
         elif args.cmd == "create-user":
             db.init_db()
             db.create_user(args.tenant_id, args.username, _password(), args.role)
             print(f"Utworzono użytkownika {args.username!r} dla tenanta {args.tenant_id}")
         elif args.cmd == "rotate-api-key":
             db.init_db()
-            api_key = db.rotate_api_key(args.tenant_id)
-            print(f"Nowy klucz API wygenerowany (zamaskowany): {_mask_secret(api_key)}")
+            db.rotate_api_key(args.tenant_id)
+            print(f"Nowy klucz API wygenerowany dla tenanta id={args.tenant_id}.")
         elif args.cmd == "list-tenants":
             db.init_db()
             for t in db.list_tenants():
