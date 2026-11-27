@@ -6,4 +6,4 @@ numpy~=2.5
 scikit-learn~=1.9
 scipy~=1.18
 reportlab~=5.0
-gunicorn~=23.0
+gunicorn~=27.0
