@@ -1,0 +1,10 @@
+# Reverse proxy z automatycznym TLS (Let's Encrypt). Domeny z pliku .env.
+# DNS obu domen musi wskazywać na ten serwer, porty 80/443 otwarte.
+
+{$INGEST_DOMAIN} {
+	reverse_proxy bi_server:5000
+}
+
+{$SOC_DOMAIN} {
+	reverse_proxy ai_dashboard:5001
+}

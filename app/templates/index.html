@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BI Log API</title>
+<style>
+:root{
+  --bg-base:#060a13; --bg-panel:#0d1424; --border:#1c2740;
+  --text-primary:#e6edf7; --text-muted:#7c8aa5; --accent:#22d3ee;
+  --font-display:'Space Grotesk',sans-serif; --font-body:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+*{ box-sizing:border-box; }
+body{
+  font-family:var(--font-body); background:var(--bg-base); color:var(--text-primary);
+  margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.card{ width:100%; max-width:420px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:28px; }
+.session-bar{ display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.session-bar a{ color:var(--accent); text-decoration:none; }
+.session-bar a:hover{ text-decoration:underline; }
+.eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin:0 0 6px; }
+h1{ font-family:var(--font-display); font-size:20px; font-weight:700; margin:0 0 4px; }
+p.desc{ color:var(--text-muted); font-size:13px; margin:0 0 22px; line-height:1.5; }
+label{ display:block; font-family:var(--font-mono); font-size:11px; letter-spacing:0.5px; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; margin-top:16px; }
+input, select{ width:100%; font-family:var(--font-body); font-size:14px; background:#04070d; color:var(--text-primary); border:1px solid var(--border); border-radius:7px; padding:10px 12px; outline:none; }
+input:focus-visible, select:focus-visible, button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+button{ width:100%; margin-top:22px; padding:11px; font-family:var(--font-display); font-size:14px; font-weight:600; background:var(--accent); color:#04070d; border:none; border-radius:7px; cursor:pointer; transition:filter .15s ease; }
+button:hover{ filter:brightness(1.08); }
+.endpoint{ margin-top:20px; padding-top:16px; border-top:1px solid var(--border); font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+.endpoint code{ color:var(--accent); }
+.error-box{ margin:12px 0; padding:10px 12px; border-radius:7px; background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.35); color:#f43f5e; font-size:13px; }
+.desc a{ color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="session-bar">
+    <span>{{ tenant.name if tenant else '—' }} · {{ username }}</span>
+    <a href="{{ url_for('logout') }}">wyloguj</a>
+  </div>
+
+  <p class="eyebrow">BI Log API</p>
+  {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+  {% if demo_mode %}
+  <h1>Wstrzyknij zdarzenie testowe</h1>
+  <p class="desc">Ręczne dodanie pojedynczego zdarzenia do logu tego podmiotu — przydatne przy testowaniu reguł detekcji bez uruchamiania generatora.</p>
+
+  <form method="POST" action="/">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="username">Użytkownik</label>
+    <input type="text" id="username" name="username" placeholder="np. admin, user_014" required>
+
+    <label for="action">Akcja</label>
+    <select id="action" name="action" required>
+      <option value="login">login</option>
+      <option value="logout">logout</option>
+      <option value="view_report">view_report</option>
+      <option value="export_data">export_data</option>
+      <option value="create_record">create_record</option>
+      <option value="update_record">update_record</option>
+      <option value="delete_record">delete_record</option>
+      <option value="change_password">change_password</option>
+      <option value="access_dashboard">access_dashboard</option>
+    </select>
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="success">success</option>
+      <option value="failed">failed</option>
+    </select>
+
+    <label for="records">Liczba rekordów</label>
+    <input type="number" id="records" name="records" value="1" min="0" step="1">
+
+    <button type="submit">Zapisz zdarzenie</button>
+  </form>
+
+  {% else %}
+  <h1>Formularz wyłączony</h1>
+  <p class="desc">Ręczne wstrzykiwanie zdarzeń służy do demonstracji i testów reguł (operator może wpisać dowolnego użytkownika, więc w środowisku produkcyjnym byłoby fałszowaniem logu). Włącza je zmienna <code>SOC_DEMO_MODE=1</code>. Zdarzenia z systemów klienta wprowadzaj przez <a href="{{ url_for('ingest_form') }}">import pliku</a> albo API.</p>
+  {% endif %}
+
+  <div class="endpoint">Endpoint: <code>POST /</code> · adres IP i znacznik czasu dopisywane są automatycznie · zdarzenie trafia do podmiotu <code>{{ tenant.name if tenant else '—' }}</code></div>
+</div>
+</body>
+</html>

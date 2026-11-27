@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI SOC Monitor</title>
+<style>
+:root{
+  --bg-base:#060a13;
+  --bg-panel:#0d1424;
+  --bg-panel-2:#111a30;
+  --border:#1c2740;
+  --text-primary:#e6edf7;
+  --text-muted:#7c8aa5;
+  --accent:#22d3ee;
+  --accent-dim:rgba(34,211,238,0.12);
+  --low:#34d399;
+  --medium:#fbbf24;
+  --high:#fb7a3c;
+  --critical:#f43f5e;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+*{ box-sizing:border-box; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+}
+
+body{
+  font-family:var(--font-body);
+  background:var(--bg-base);
+  color:var(--text-primary);
+  margin:0;
+  padding:0;
+  min-height:100vh;
+  position:relative;
+}
+
+/* Delikatny efekt skanlinii w tle — nawiązanie do monitoringu radarowego, bardzo niska intensywność */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(
+    to bottom,
+    rgba(34,211,238,0.015) 0px,
+    rgba(34,211,238,0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index:1;
+}
+
+.wrap{ position:relative; z-index:2; max-width:1400px; margin:0 auto; padding:24px 20px 60px; }
+
+/* ---------- HEADER ---------- */
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:16px;
+  padding-bottom:20px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:24px;
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand svg{ flex-shrink:0; }
+.brand h1{
+  font-family:var(--font-display);
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:0.3px;
+  margin:0;
+}
+.brand p{ margin:2px 0 0; font-size:12.5px; color:var(--text-muted); }
+
+.live-status{ display:flex; align-items:center; gap:20px; }
+.live-pill{
+  display:flex; align-items:center; gap:8px;
+  font-family:var(--font-mono); font-size:12px; letter-spacing:0.5px;
+  color:var(--low);
+  background:rgba(52,211,153,0.08);
+  border:1px solid rgba(52,211,153,0.3);
+  padding:6px 12px; border-radius:20px;
+}
+.live-dot{
+  width:7px; height:7px; border-radius:50%; background:var(--low);
+  box-shadow:0 0 0 0 rgba(52,211,153,0.6);
+  animation:pulse-dot 1.8s infinite;
+}
+@keyframes pulse-dot{
+  0%{ box-shadow:0 0 0 0 rgba(52,211,153,0.55); }
+  70%{ box-shadow:0 0 0 7px rgba(52,211,153,0); }
+  100%{ box-shadow:0 0 0 0 rgba(52,211,153,0); }
+}
+.last-update{ font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+
+/* ---------- SEVERITY CARDS ---------- */
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:14px;
+  margin-bottom:24px;
+}
+@media (max-width:820px){ .cards{ grid-template-columns:repeat(2,1fr); } }
+
+.card{
+  background:var(--bg-panel);
+  border:1px solid var(--border);
+  border-left:3px solid var(--sev-color);
+  border-radius:10px;
+  padding:16px 18px;
+  position:relative;
+  overflow:hidden;
+}
+.card .top-row{ display:flex; justify-content:space-between; align-items:flex-start; }
+.card .icon{ color:var(--sev-color); opacity:0.9; }
+.card .label{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px;
+  color:var(--text-muted); text-transform:uppercase;
+}
+.card .count{
+  font-family:var(--font-display); font-size:34px; font-weight:700;
+  color:var(--text-primary); margin-top:6px; line-height:1;
+}
+.card .bar-track{ margin-top:12px; height:4px; border-radius:2px; background:var(--bg-panel-2); overflow:hidden; }
+.card .bar-fill{ height:100%; background:var(--sev-color); border-radius:2px; transition:width .4s ease; }
+
+.card.low{ --sev-color: var(--low); }
+.card.medium{ --sev-color: var(--medium); }
+.card.high{ --sev-color: var(--high); }
+.card.critical{ --sev-color: var(--critical); }
+.card.critical .count{ animation:crit-glow 2s infinite; }
+@keyframes crit-glow{
+  0%,100%{ text-shadow:0 0 0 rgba(244,63,94,0); }
+  50%{ text-shadow:0 0 14px rgba(244,63,94,0.55); }
+}
+
+/* ---------- FILTERS ---------- */
+.filters{
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  margin-bottom:18px;
+}
+.filters input, .filters select{
+  font-family:var(--font-body); font-size:13px;
+  background:var(--bg-panel); color:var(--text-primary);
+  border:1px solid var(--border); border-radius:7px;
+  padding:8px 12px; outline:none;
+}
+.filters input::placeholder{ color:var(--text-muted); }
+.filters input:focus-visible, .filters select:focus-visible, .chip:focus-visible{
+  outline:2px solid var(--accent); outline-offset:1px;
+}
+.chip-group{ display:flex; gap:6px; }
+.chip{
+  font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.5px;
+  background:var(--bg-panel); color:var(--text-muted);
+  border:1px solid var(--border); border-radius:20px;
+  padding:6px 13px; cursor:pointer; transition:all .15s ease;
+}
+.chip.active{ color:var(--bg-base); background:var(--accent); border-color:var(--accent); font-weight:600; }
+
+/* ---------- MAIN GRID ---------- */
+.main-grid{
+  display:grid;
+  grid-template-columns:1.7fr 1fr;
+  gap:18px;
+  align-items:start;
+}
+@media (max-width:980px){ .main-grid{ grid-template-columns:1fr; } }
+
+.panel{
+  background:var(--bg-panel);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:18px;
+}
+.panel h2{
+  font-family:var(--font-display); font-size:14px; letter-spacing:0.5px;
+  margin:0 0 14px; text-transform:uppercase; color:var(--text-muted);
+  display:flex; align-items:center; gap:8px;
+}
+
+/* ---------- TABLE ---------- */
+.table-scroll{ overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; min-width:720px; }
+th, td{ padding:10px 12px; text-align:left; white-space:nowrap; }
+th{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:0.8px;
+  color:var(--text-muted); text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+tbody tr{ border-bottom:1px solid var(--border); transition:background .15s ease; }
+tbody tr:hover{ background:var(--bg-panel-2); }
+td{ font-size:13px; }
+td.mono{ font-family:var(--font-mono); font-size:12.5px; color:var(--text-muted); }
+td.attack-type{ color:var(--text-primary); font-size:12.5px; max-width:260px; white-space:normal; }
+td.records{ font-family:var(--font-mono); }
+td.records.spike{ color:var(--high); font-weight:700; }
+
+.badge{
+  font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:0.5px;
+  padding:4px 10px; border-radius:20px; display:inline-block;
+}
+.badge.low{ color:var(--low); background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.35); }
+.badge.medium{ color:var(--medium); background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.35); }
+.badge.high{ color:var(--high); background:rgba(251,122,60,0.1); border:1px solid rgba(251,122,60,0.35); }
+.badge.critical{
+  color:var(--critical); background:rgba(244,63,94,0.12); border:1px solid rgba(244,63,94,0.45);
+  animation:crit-badge 1.6s infinite;
+}
+@keyframes crit-badge{
+  0%,100%{ box-shadow:0 0 0 0 rgba(244,63,94,0.35); }
+  50%{ box-shadow:0 0 0 4px rgba(244,63,94,0); }
+}
+
+.empty-row td{ text-align:center; color:var(--text-muted); font-family:var(--font-mono); font-size:12.5px; padding:26px; }
+
+/* ---------- CHART PANEL ---------- */
+canvas{ max-height:170px; }
+
+.side-stack{ display:flex; flex-direction:column; gap:18px; }
+
+/* ---------- ATTACK TYPE BARS ---------- */
+.type-bar-row{ margin-bottom:10px; }
+.type-bar-row .type-label{
+  font-size:12px; color:var(--text-primary); margin-bottom:4px;
+  display:flex; justify-content:space-between;
+}
+.type-bar-row .type-label span.count{ font-family:var(--font-mono); color:var(--text-muted); }
+.type-bar-track{ height:6px; border-radius:3px; background:var(--bg-panel-2); overflow:hidden; }
+.type-bar-fill{ height:100%; border-radius:3px; background:var(--accent); }
+
+/* ---------- LIVE THREAT CONSOLE (element sygnaturowy) ---------- */
+.console{
+  background:#04070d;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  font-family:var(--font-mono);
+  font-size:12px;
+  height:280px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column-reverse;
+}
+.console-line{ padding:3px 0; line-height:1.5; border-bottom:1px dashed rgba(255,255,255,0.04); }
+.console-line .ts{ color:var(--text-muted); }
+.console-line .sev-low{ color:var(--low); }
+.console-line .sev-medium{ color:var(--medium); }
+.console-line .sev-high{ color:var(--high); }
+.console-line .sev-critical{ color:var(--critical); font-weight:700; }
+.console-cursor{
+  color:var(--accent); display:flex; align-items:center; gap:6px; padding-bottom:6px;
+}
+.console-cursor .blink{ animation:blink 1s step-end infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+
+.tooltip{
+  position:absolute; background:rgba(10,15,28,0.97); color:var(--text-primary);
+  padding:10px 14px; border:1px solid var(--border); border-radius:8px;
+  font-family:var(--font-mono); font-size:12px; line-height:1.6;
+  pointer-events:none; white-space:pre-line; z-index:20;
+  opacity:0; transition:opacity .15s ease;
+}
+
+/* ---------- SESSION BAR ---------- */
+.session-bar{
+  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+  font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted);
+  padding:8px 0 14px;
+}
+.session-bar .who a{ color:var(--critical); text-decoration:none; margin-left:10px; }
+.session-bar .who a:hover{ text-decoration:underline; }
+.report-form{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.report-form input[type=date]{
+  font-family:var(--font-body); font-size:12px; background:var(--bg-panel); color:var(--text-primary);
+  border:1px solid var(--border); border-radius:6px; padding:6px 8px;
+}
+.report-form button{
+  font-family:var(--font-display); font-size:12px; font-weight:600;
+  background:var(--accent); color:#04070d; border:none; border-radius:6px;
+  padding:7px 14px; cursor:pointer;
+}
+.report-form button:hover{ filter:brightness(1.08); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="session-bar">
+  <div class="report-form">
+    <label for="report-start" style="margin:0;color:var(--text-muted);">Raport zgodności:</label>
+    <input type="date" id="report-start">
+    <span>—</span>
+    <input type="date" id="report-end">
+    <button id="report-btn" type="button">Pobierz PDF (art. 8 KSC)</button>
+  </div>
+  <div class="who">{{ tenant.name if tenant else '—' }} · {{ username }}<a href="{{ url_for('logout') }}">wyloguj</a></div>
+</div>
+
+<header>
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L4 5v6c0 5 3.4 9.2 8 11 4.6-1.8 8-6 8-11V5l-8-3z" stroke="#22d3ee" stroke-width="1.4"/>
+      <path d="M9 12l2 2 4-4" stroke="#22d3ee" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1>AI SOC Monitor</h1>
+      <p>Wykrywanie anomalii i prób ataku w czasie rzeczywistym</p>
+    </div>
+  </div>
+  <div class="live-status">
+    <div class="live-pill"><span class="live-dot"></span> STRUMIEŃ NA ŻYWO</div>
+    <div class="last-update" id="last-update">ostatnia aktualizacja: —</div>
+  </div>
+</header>
+
+<div class="cards" id="severity-cards"></div>
+
+<div class="filters">
+  <input class="filter" id="filter-user" placeholder="Filtruj wg użytkownika…">
+  <input class="filter" id="filter-action" placeholder="Filtruj wg akcji…">
+  <select id="filter-type"><option value="">Wszystkie typy ataku</option></select>
+  <div class="chip-group" id="severity-chips">
+    <button class="chip active" data-sev="ALL">WSZYSTKIE</button>
+    <button class="chip" data-sev="LOW">LOW</button>
+    <button class="chip" data-sev="MEDIUM">MEDIUM</button>
+    <button class="chip" data-sev="HIGH">HIGH</button>
+    <button class="chip" data-sev="CRITICAL">CRITICAL</button>
+  </div>
+</div>
+
+<div class="main-grid">
+
+  <div class="panel">
+    <h2>Dziennik alertów</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Użytkownik</th>
+            <th>Akcja</th>
+            <th>Typ ataku</th>
+            <th>Rekordy</th>
+            <th>Głosy</th>
+            <th>Score</th>
+            <th>Poziom</th>
+            <th>Zalecana reakcja</th>
+          </tr>
+        </thead>
+        <tbody id="alert-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="side-stack">
+    <div class="panel">
+      <h2>Alerty w czasie</h2>
+      <canvas id="chart" height="140"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Rozkład typów ataku</h2>
+      <div id="type-bars"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Live Threat Console</h2>
+      <div class="console" id="console"></div>
+    </div>
+  </div>
+
+</div>
+
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script src="{{ url_for('static', filename='linechart.js') }}"></script>
+<script nonce="{{ csp_nonce() }}">
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+let allAlerts = [];
+let activeSeverity = "ALL";
+let consoleSeenKeys = new Set();
+const tooltip = document.getElementById('tooltip');
+
+function suggestion(sev){
+    if(sev==="CRITICAL") return "Natychmiastowe zablokowanie konta i śledztwo";
+    if(sev==="HIGH") return "Wymagany ręczny przegląd";
+    if(sev==="MEDIUM") return "Obserwuj zachowanie użytkownika";
+    return "Tylko odnotuj w logu";
+}
+
+function fmtRecords(n){
+    return (n||0).toLocaleString('pl-PL');
+}
+
+/* ---------- TABELA ---------- */
+function renderTable(alerts){
+    const userFilter = document.getElementById('filter-user').value.toLowerCase();
+    const actionFilter = document.getElementById('filter-action').value.toLowerCase();
+    const typeFilter = document.getElementById('filter-type').value;
+    const tableBody = document.getElementById('alert-table');
+    tableBody.innerHTML = "";
+
+    const filtered = alerts.filter(a=>
+        a.user.toLowerCase().includes(userFilter) &&
+        a.action.toLowerCase().includes(actionFilter) &&
+        (typeFilter === "" || a.attack_type === typeFilter) &&
+        (activeSeverity === "ALL" || a.severity.toUpperCase() === activeSeverity)
+    );
+
+    if(filtered.length === 0){
+        tableBody.innerHTML = `<tr class="empty-row"><td colspan="8">Brak alertów spełniających kryteria filtra</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(a=>{
+        const sev = a.severity.toUpperCase();
+        const tr = document.createElement('tr');
+        const spikeClass = a.records >= 5000 ? "records spike" : "records";
+        tr.innerHTML = `
+            <td class="mono">${esc(a.user)}</td>
+            <td>${esc(a.action)}</td>
+            <td class="attack-type">${esc(a.attack_type || "—")}</td>
+            <td class="${spikeClass}">${esc(fmtRecords(a.records))}</td>
+            <td class="mono">${esc(a.votes)}</td>
+            <td class="mono">${esc(a.score)}</td>
+            <td><span class="badge ${esc(sev.toLowerCase())}">${esc(sev)}</span></td>
+            <td>${suggestion(sev)}</td>
+        `;
+        tr.addEventListener('mouseenter', ()=>{
+            tooltip.style.opacity = 1;
+            tooltip.innerText = `Użytkownik: ${a.user}\nAkcja: ${a.action}\nTimestamp: ${a.timestamp}\nDetektory: ${a.detectors}\nRekordy: ${fmtRecords(a.records)}`;
+        });
+        tr.addEventListener('mousemove', e=>{
+            tooltip.style.left = e.pageX + 15 + "px";
+            tooltip.style.top = e.pageY + 15 + "px";
+        });
+        tr.addEventListener('mouseleave', ()=>{ tooltip.style.opacity = 0; });
+        tableBody.appendChild(tr);
+    });
+}
+
+/* ---------- KARTY SEVERITY ---------- */
+function renderCards(alerts){
+    let counts = {LOW:0,MEDIUM:0,HIGH:0,CRITICAL:0};
+    alerts.forEach(a=>{ counts[a.severity.toUpperCase()] = (counts[a.severity.toUpperCase()]||0)+1; });
+    const total = alerts.length || 1;
+
+    const defs = [
+        {key:"LOW", cls:"low", icon:'<path d="M12 2l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V5l7-3z"/>'},
+        {key:"MEDIUM", cls:"medium", icon:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>'},
+        {key:"HIGH", cls:"high", icon:'<path d="M12 3l9 16H3L12 3z"/><path d="M12 10v4M12 17h.01"/>'},
+        {key:"CRITICAL", cls:"critical", icon:'<path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3"/>'}
+    ];
+
+    document.getElementById('severity-cards').innerHTML = defs.map(d=>`
+        <div class="card ${d.cls}">
+            <div class="top-row">
+                <div>
+                    <div class="label">${d.key}</div>
+                    <div class="count">${counts[d.key]}</div>
+                </div>
+                <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(counts[d.key]/total*100)}%"></div></div>
+        </div>
+    `).join("");
+}
+
+/* ---------- ROZKŁAD TYPÓW ATAKU ---------- */
+function renderTypeBars(alerts){
+    const counts = {};
+    alerts.forEach(a=>{
+        const t = a.attack_type || "Nieokreślona anomalia";
+        counts[t] = (counts[t]||0) + 1;
+    });
+    const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const max = entries.length ? entries[0][1] : 1;
+    const container = document.getElementById('type-bars');
+
+    if(entries.length === 0){
+        container.innerHTML = `<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:12.5px;">Brak danych</div>`;
+        return;
+    }
+
+    container.innerHTML = entries.map(([type,count])=>`
+        <div class="type-bar-row">
+            <div class="type-label"><span>${esc(type)}</span><span class="count">${esc(count)}</span></div>
+            <div class="type-bar-track"><div class="type-bar-fill" style="width:${Math.round(count/max*100)}%"></div></div>
+        </div>
+    `).join("");
+
+    // Aktualizacja listy dostępnych typów w selektorze filtra
+    const select = document.getElementById('filter-type');
+    const current = select.value;
+    select.innerHTML = `<option value="">Wszystkie typy ataku</option>` +
+        Object.keys(counts).map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+    select.value = current;
+}
+
+/* ---------- WYKRES ---------- */
+async function renderChart(){
+    const res = await fetch('/api/stats');
+    if(!res.ok) return;
+    const stats = await res.json();
+    LineChart.draw(document.getElementById('chart'), Object.keys(stats), Object.values(stats), {
+        onHover: (label, value, e) => {
+            if(label === null){ tooltip.style.opacity = 0; return; }
+            tooltip.style.opacity = 1;
+            tooltip.innerText = `${label}:00 — alerty: ${value}`;
+            tooltip.style.left = e.pageX + 15 + "px";
+            tooltip.style.top = e.pageY + 15 + "px";
+        }
+    });
+}
+
+/* ---------- LIVE THREAT CONSOLE ---------- */
+function pushToConsole(alerts){
+    const consoleEl = document.getElementById('console');
+    // alerts przychodzi posortowane od najnowszego — bierzemy nowe, jeszcze nie wypisane
+    const fresh = [];
+    for(const a of alerts){
+        const key = `${a.user}|${a.timestamp}|${a.action}`;
+        if(!consoleSeenKeys.has(key)){
+            consoleSeenKeys.add(key);
+            fresh.push(a);
+        }
+    }
+    // wypisujemy od najstarszego z nowych, żeby kolejność w konsoli była chronologiczna
+    fresh.reverse().forEach(a=>{
+        const sev = a.severity.toLowerCase();
+        const line = document.createElement('div');
+        line.className = 'console-line';
+        line.innerHTML = `<span class="ts">${esc(a.timestamp)}</span> <span class="sev-${esc(sev)}">[${esc(a.severity.toUpperCase())}]</span> ${esc(a.user)} → ${esc(a.action)} :: ${esc(a.attack_type || 'anomalia')}`;
+        consoleEl.appendChild(line);
+    });
+    // ograniczenie długości bufora konsoli
+    while(consoleEl.children.length > 120){
+        consoleEl.removeChild(consoleEl.firstChild);
+    }
+}
+
+function ensureCursor(){
+    const consoleEl = document.getElementById('console');
+    if(!document.getElementById('console-cursor')){
+        const cursor = document.createElement('div');
+        cursor.id = 'console-cursor';
+        cursor.className = 'console-cursor';
+        cursor.innerHTML = `&gt; nasłuchiwanie strumienia zdarzeń<span class="blink">_</span>`;
+        consoleEl.appendChild(cursor);
+    }
+}
+
+/* ---------- ŁADOWANIE DANYCH ---------- */
+async function load(){
+    let r = await fetch('/api/alerts');
+    if(r.status === 401){ window.location.href = '/login'; return; }
+    let data = await r.json();
+    allAlerts = Array.isArray(data) ? data : (data.alerts||[]);
+
+    renderTable(allAlerts);
+    renderCards(allAlerts);
+    renderTypeBars(allAlerts);
+    renderChart();
+    ensureCursor();
+    pushToConsole(allAlerts);
+
+    document.getElementById('last-update').textContent =
+        'ostatnia aktualizacja: ' + new Date().toLocaleTimeString('pl-PL');
+}
+
+document.getElementById('filter-user').addEventListener('input', ()=>renderTable(allAlerts));
+document.getElementById('filter-action').addEventListener('input', ()=>renderTable(allAlerts));
+document.getElementById('filter-type').addEventListener('change', ()=>renderTable(allAlerts));
+document.getElementById('severity-chips').addEventListener('click', e=>{
+    const btn = e.target.closest('.chip');
+    if(!btn) return;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    activeSeverity = btn.dataset.sev;
+    renderTable(allAlerts);
+});
+
+/* ---------- RAPORT ZGODNOŚCI (PDF) ---------- */
+(function initReportForm(){
+    const today = new Date();
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const fmt = d => d.toISOString().slice(0,10);
+    document.getElementById('report-start').value = fmt(firstOfMonth);
+    document.getElementById('report-end').value = fmt(today);
+
+    document.getElementById('report-btn').addEventListener('click', ()=>{
+        const start = document.getElementById('report-start').value;
+        const end = document.getElementById('report-end').value;
+        window.location.href = `/report/compliance?start=${start}&end=${end}`;
+    });
+})();
+
+window.addEventListener('resize', renderChart);
+setInterval(load, 2000);
+load();
+</script>
+</body>
+</html>

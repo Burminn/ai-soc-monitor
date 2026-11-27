@@ -1,0 +1,51 @@
+x-app: &app
+  build: .
+  restart: unless-stopped
+  environment: &env
+    SOC_SECRET_KEY: ${SOC_SECRET_KEY:?Ustaw SOC_SECRET_KEY w pliku .env (min. 32 znaki)}
+    SOC_DB_PATH: /data/soc.db
+    SOC_HTTPS: "1"
+    SOC_TRUSTED_PROXIES: "1"   # dokładnie jedno proxy (Caddy) przed aplikacją
+    SOC_DEMO_MODE: ${SOC_DEMO_MODE:-0}
+    SOC_PRIVILEGED_ACTORS: ${SOC_PRIVILEGED_ACTORS:-admin,root,administrator}
+  volumes:
+    - soc_data:/data
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  bi_server:
+    <<: *app
+    expose: ["5000"]
+
+  ai_dashboard:
+    <<: *app
+    command: ["gunicorn", "--workers", "1", "--threads", "4", "--bind", "0.0.0.0:5001", "ai_dashboard:app"]
+    environment:
+      <<: *env
+      PORT: "5001"
+    expose: ["5001"]
+
+  ai_monitor:
+    <<: *app
+    command: ["python", "ai_monitor.py"]
+    healthcheck:
+      disable: true
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      INGEST_DOMAIN: ${INGEST_DOMAIN:?Ustaw INGEST_DOMAIN}
+      SOC_DOMAIN: ${SOC_DOMAIN:?Ustaw SOC_DOMAIN}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [bi_server, ai_dashboard]
+
+volumes:
+  soc_data:
+  caddy_data:
+  caddy_config:

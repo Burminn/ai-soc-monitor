@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logowanie — AI SOC Monitor</title>
+<style>
+:root{
+  --bg-base:#060a13; --bg-panel:#0d1424; --border:#1c2740;
+  --text-primary:#e6edf7; --text-muted:#7c8aa5; --accent:#22d3ee;
+  --critical:#f43f5e;
+  --font-display:'Space Grotesk',sans-serif; --font-body:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+*{ box-sizing:border-box; }
+body{
+  font-family:var(--font-body); background:var(--bg-base); color:var(--text-primary);
+  margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.card{ width:100%; max-width:380px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:28px; }
+.eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin:0 0 6px; }
+h1{ font-family:var(--font-display); font-size:20px; font-weight:700; margin:0 0 4px; }
+p.desc{ color:var(--text-muted); font-size:13px; margin:0 0 22px; line-height:1.5; }
+label{ display:block; font-family:var(--font-mono); font-size:11px; letter-spacing:0.5px; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; margin-top:16px; }
+input{ width:100%; font-family:var(--font-body); font-size:14px; background:#04070d; color:var(--text-primary); border:1px solid var(--border); border-radius:7px; padding:10px 12px; outline:none; }
+input:focus-visible, button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+button{ width:100%; margin-top:22px; padding:11px; font-family:var(--font-display); font-size:14px; font-weight:600; background:var(--accent); color:#04070d; border:none; border-radius:7px; cursor:pointer; }
+button:hover{ filter:brightness(1.08); }
+.error{ margin-top:16px; padding:10px 12px; border-radius:7px; background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.35); color:var(--critical); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <p class="eyebrow">AI SOC Monitor</p>
+  <h1>Logowanie</h1>
+  <p class="desc">Dostęp tylko dla upoważnionych operatorów danego podmiotu.</p>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  <form method="POST" action="{{ url_for('login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next_url or '' }}">
+    <label for="username">Login</label>
+    <input type="text" id="username" name="username" required autofocus>
+    <label for="password">Hasło</label>
+    <input type="password" id="password" name="password" required>
+    <button type="submit">Zaloguj</button>
+  </form>
+</div>
+</body>
+</html>

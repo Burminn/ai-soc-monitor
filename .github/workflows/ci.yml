@@ -1,0 +1,46 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13", cache: pip }
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+        env: { SOC_SECRET_KEY: "ci-only-secret-key-ci-only-secret-key-0123" }
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install -r requirements-dev.txt
+      - name: SAST (bandit)
+        run: bandit -r app -c pyproject.toml -ll
+      - name: Znane podatności zależności (pip-audit)
+        run: pip-audit -r requirements.txt
+      - name: Sekrety w repozytorium (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ai-soc-monitor:ci .
+      - name: Skan obrazu (trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ai-soc-monitor:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
