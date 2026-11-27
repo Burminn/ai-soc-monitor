@@ -140,8 +140,9 @@ def ingest_preview():
 
     try:
         df = ingest.load_dataframe(f, filename_hint=f.filename)
-    except ValueError as exc:  # także błędy parsowania pandas / JSON
-        return jsonify({"error": f"Nie udało się wczytać pliku: {str(exc)[:200]}"}), 400
+    except ValueError:  # także błędy parsowania pandas / JSON
+        app.logger.warning("Nie udało się wczytać pliku w /ingest/preview", exc_info=True)
+        return jsonify({"error": "Nie udało się wczytać pliku."}), 400
     except Exception:  # noqa: BLE001
         return jsonify({"error": "Nie udało się wczytać pliku."}), 400
 
