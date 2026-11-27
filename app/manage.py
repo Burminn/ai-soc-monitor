@@ -75,6 +75,7 @@ def main(argv=None):
             db.init_db()
             db.rotate_api_key(args.tenant_id)
             print(f"Nowy klucz API wygenerowany dla tenanta id={args.tenant_id}.")
+            print("Nowy klucz API wygenerowany.")
         elif args.cmd == "list-tenants":
             db.init_db()
             for t in db.list_tenants():
