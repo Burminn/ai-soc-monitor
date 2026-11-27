@@ -14,7 +14,6 @@ Jawny klucz widać tylko raz, w chwili wygenerowania.
 """
 
 import datetime
-import hashlib
 import os
 import re
 import secrets
@@ -118,7 +117,7 @@ def init_db():
 
 
 def _hash_key(api_key):
-    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+    return generate_password_hash(api_key)
 
 
 def _migrate(conn):
@@ -192,11 +191,14 @@ def get_tenant_by_api_key(api_key):
     if not isinstance(api_key, str) or not (10 <= len(api_key) <= 200):
         return None
     conn = get_conn()
-    row = conn.execute(
-        f"SELECT {_TENANT_COLUMNS} FROM tenants WHERE api_key_hash=?", (_hash_key(api_key),)  # nosec B608
-    ).fetchone()
+    rows = conn.execute(
+        f"SELECT {_TENANT_COLUMNS}, api_key_hash FROM tenants WHERE api_key_prefix=?", (api_key[:8],)  # nosec B608
+    ).fetchall()
     conn.close()
-    return dict(row) if row else None
+    for row in rows:
+        if row["api_key_hash"] and check_password_hash(row["api_key_hash"], api_key):
+            return {k: row[k] for k in ("id", "name", "sector", "created_at", "api_key_prefix")}
+    return None
 
 
 def list_tenants():
