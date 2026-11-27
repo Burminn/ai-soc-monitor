@@ -602,7 +602,10 @@ document.getElementById('severity-chips').addEventListener('click', e=>{
     document.getElementById('report-btn').addEventListener('click', ()=>{
         const start = document.getElementById('report-start').value;
         const end = document.getElementById('report-end').value;
-        window.location.href = `/report/compliance?start=${start}&end=${end}`;
+        const url = new URL('/report/compliance', window.location.origin);
+        url.searchParams.set('start', start);
+        url.searchParams.set('end', end);
+        window.location.href = url.toString();
     });
 })();
 
