@@ -297,6 +297,13 @@ def load_dataframe(file_storage_or_path, filename_hint=""):
         raw = file_storage_or_path.read()
     else:
         safe_root = os.path.realpath(os.path.join(os.path.dirname(__file__), "imports"))
+        requested = str(os.fspath(file_storage_or_path))
+        if not requested:
+            raise ValueError("Brak nazwy pliku.")
+        filename = os.path.basename(requested)
+        if filename != requested or filename in {".", ".."}:
+            raise ValueError("Niedozwolona ścieżka pliku.")
+        full_path = os.path.realpath(os.path.join(safe_root, filename))
         requested = os.fspath(file_storage_or_path)
         if os.path.isabs(requested):
             raise ValueError("Niedozwolona ścieżka pliku.")
