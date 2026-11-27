@@ -16,7 +16,7 @@ import datetime
 import hmac
 import logging
 import secrets
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from flask import Response, current_app, g, jsonify, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -61,16 +61,22 @@ def deny(message, code):
 
 def safe_next(target, default="/"):
     """Zwraca `target` tylko wtedy, gdy jest ścieżką względną w obrębie aplikacji."""
-    if not target or not isinstance(target, str) or len(target) > 300:
+    if not target or not isinstance(target, str):
         return default
-    if any(ord(c) < 32 for c in target) or "\\" in target:
+    target = target.strip()
+    if not target or len(target) > 300:
         return default
-    parsed = urlparse(target)
+
+    decoded = unquote(target)
+    if any(ord(c) < 32 for c in decoded) or "\\" in decoded:
+        return default
+
+    parsed = urlparse(decoded)
     if parsed.scheme or parsed.netloc:
         return default
-    if not target.startswith("/") or target.startswith("//"):
+    if not decoded.startswith("/") or decoded.startswith("//"):
         return default
-    return target
+    return decoded
 
 
 def _before_request():
