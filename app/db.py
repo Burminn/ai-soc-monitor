@@ -193,8 +193,8 @@ def get_tenant_by_api_key(api_key):
         return None
     conn = get_conn()
     row = conn.execute(
-        f"SELECT {_TENANT_COLUMNS} FROM tenants WHERE api_key_hash=?", (_hash_key(api_key),)
-    ).fetchone()  # nosec B608 - stała lista kolumn, wartość przez parametr
+        f"SELECT {_TENANT_COLUMNS} FROM tenants WHERE api_key_hash=?", (_hash_key(api_key),)  # nosec B608
+    ).fetchone()
     conn.close()
     return dict(row) if row else None
 
@@ -202,8 +202,8 @@ def get_tenant_by_api_key(api_key):
 def list_tenants():
     conn = get_conn()
     rows = conn.execute(
-        f"SELECT {_TENANT_COLUMNS} FROM tenants ORDER BY id"
-    ).fetchall()  # nosec B608
+        f"SELECT {_TENANT_COLUMNS} FROM tenants ORDER BY id"  # nosec B608
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -211,8 +211,8 @@ def list_tenants():
 def get_tenant(tenant_id):
     conn = get_conn()
     row = conn.execute(
-        f"SELECT {_TENANT_COLUMNS} FROM tenants WHERE id=?", (tenant_id,)
-    ).fetchone()  # nosec B608
+        f"SELECT {_TENANT_COLUMNS} FROM tenants WHERE id=?", (tenant_id,)  # nosec B608
+    ).fetchone()
     conn.close()
     return dict(row) if row else None
 

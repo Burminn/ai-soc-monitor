@@ -268,7 +268,7 @@ def apply_mapping(df, mapping, defaults=None):
                 actor=value("actor", i, "unknown"),
                 action=value("action", i, "unknown"),
                 timestamp=value("timestamp", i),
-                ip=value("ip", i, "0.0.0.0"),
+                ip=value("ip", i, "0.0.0.0"),  # nosec B104
                 status=value("status", i, "success"),
                 records=value("records", i, 1),
             ))

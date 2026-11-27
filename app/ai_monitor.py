@@ -94,7 +94,7 @@ def featurize(df, state):
     df["weekday"] = df["timestamp"].dt.weekday.fillna(0).astype(int)
     df["action"] = df["action"].fillna("unknown").astype(str)
     df["status"] = df["status"].fillna("success").astype(str)
-    df["ip"] = df["ip"].fillna("0.0.0.0").astype(str)
+    df["ip"] = df["ip"].fillna("0.0.0.0").astype(str)  # nosec B104
     df["is_failed"] = (df["status"] == "failed").astype(int)
     df["records"] = pd.to_numeric(df["records"], errors="coerce").fillna(0)
     df["records_log"] = np.log1p(df["records"])

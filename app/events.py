@@ -71,7 +71,7 @@ def normalize_ip(value):
     try:
         return str(ipaddress.ip_address(str(value).strip()))
     except ValueError:
-        return "0.0.0.0"
+        return "0.0.0.0"  # nosec B104
 
 
 def normalize_status(value):
