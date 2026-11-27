@@ -302,8 +302,15 @@ def load_dataframe(file_storage_or_path, filename_hint=""):
             raise ValueError("Brak ścieżki pliku.")
         if os.path.isabs(requested):
             raise ValueError("Niedozwolona ścieżka pliku.")
+
         normalized_requested = os.path.normpath(requested)
-        if normalized_requested == ".." or normalized_requested.startswith(".." + os.sep):
+        if normalized_requested in ("", ".", "..") or normalized_requested.startswith(".." + os.sep):
+            raise ValueError("Niedozwolona ścieżka pliku.")
+
+        # Dla importu z lokalnego katalogu dopuszczamy wyłącznie nazwę pliku.
+        if os.path.basename(normalized_requested) != normalized_requested:
+            raise ValueError("Niedozwolona ścieżka pliku.")
+        if "/" in normalized_requested or "\\" in normalized_requested:
             raise ValueError("Niedozwolona ścieżka pliku.")
 
         full_path = os.path.realpath(os.path.join(safe_root, normalized_requested))
