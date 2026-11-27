@@ -108,7 +108,8 @@ def register(app):
                 db.clear_auth_failures(_login_keys(username, ip)[0])
                 login_user(user)
                 log.info("login_ok user=%r tenant=%s ip=%s", username, user["tenant_id"], ip)
-                return redirect(next_url)
+                safe_redirect_target = security.safe_next(next_url, default=url_for("login"))
+                return redirect(safe_redirect_target)
 
             db.record_auth_failure(*_login_keys(username, ip))
             log.warning("login_failed user=%r ip=%s", username, ip)
