@@ -298,9 +298,21 @@ def load_dataframe(file_storage_or_path, filename_hint=""):
     else:
         safe_root = os.path.realpath(os.path.join(os.path.dirname(__file__), "imports"))
         requested = os.fspath(file_storage_or_path)
-        full_path = os.path.realpath(os.path.join(safe_root, requested))
-        if os.path.commonpath([safe_root, full_path]) != safe_root:
+        if not requested:
+            raise ValueError("Brak ścieżki pliku.")
+        if os.path.isabs(requested):
             raise ValueError("Niedozwolona ścieżka pliku.")
+        normalized_requested = os.path.normpath(requested)
+        if normalized_requested == ".." or normalized_requested.startswith(".." + os.sep):
+            raise ValueError("Niedozwolona ścieżka pliku.")
+
+        full_path = os.path.realpath(os.path.join(safe_root, normalized_requested))
+        try:
+            if os.path.commonpath([safe_root, full_path]) != safe_root:
+                raise ValueError("Niedozwolona ścieżka pliku.")
+        except ValueError as exc:
+            raise ValueError("Niedozwolona ścieżka pliku.") from exc
+
         with open(full_path, "rb") as fh:
             raw = fh.read()
     text = _decode(raw)
