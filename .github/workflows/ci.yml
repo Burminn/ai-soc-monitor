@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t ai-soc-monitor:ci .
       - name: Skan obrazu (trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ai-soc-monitor:ci
           severity: HIGH,CRITICAL
